@@ -1,67 +1,127 @@
-import React from 'react'
+'use client'
+
+import React, { useState } from 'react';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isSameMonth, differenceInCalendarDays, startOfYear, addMonths } from 'date-fns'
 
 const Calendar = () => {
-    const startOfMonth: Date = new Date(2024, 0, 1);
-    const endOfMonth: Date = new Date(2024, 0, 31);
+    const [currentDate, setCurrentDate] = useState(new Date());
 
-    const daysInMonth: number = Math.floor((endOfMonth.getTime() - startOfMonth.getTime()) / (24 * 60 * 60 * 1000)) + 1
-
-    const weekdays: string[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-
-    const generateDates = (): (Date | undefined)[] => {
-        const dates: (Date | undefined)[] = [];
-        for (let i = 0; i < daysInMonth; i++) {
-            const currentDate: Date = new Date(startOfMonth);
-            currentDate.setDate(startOfMonth.getDate() + i);
-            dates.push(currentDate);
-        }
-        return dates;
+    const goToNextMonth = () => {
+        setCurrentDate(addMonths(currentDate, 1));
     };
 
-    const dates: (Date | undefined)[] = generateDates();
+    const goToPreviousMonth = () => {
+        setCurrentDate(addMonths(currentDate, -1));
+    };
+
+    // Get start and end dates of current month
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+
+    // Get start and end dates of the week that contains the start and end of the month
+    const weekStart = startOfWeek(monthStart);
+    const weekEnd = endOfWeek(monthEnd);
+
+    // Array of dates for each day in the interval
+    const dates = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+    // Format the current month and year
+    const monthYear = format(currentDate, 'MMMM yyyy');
+
+    // Format day of the week
+    const dayFormat = 'EEE';
+
+    // Format the day of the month
+    const dateFormat = 'd';
 
     return (
-        <div className='p-10'>
-            Calendar
+        <div className='flex flex-col items-center p-4 w-full'>
+            <div className='flex flex-row justify-around w-full p-10'>
+                <button
+                    className="btn btn-active btn-primary"
+                    onClick={goToPreviousMonth}
+                >
+                    Prev
+                </button>
 
-            <div className='text-center text-2xl font-extrabold '>
-                January
+                <div className='text-2xl font-bold'>
+                    {monthYear}
+                </div>
+
+                <button
+                    className="btn btn-active btn-primary"
+                    onClick={goToNextMonth}
+                >
+                    Next
+                </button>
             </div>
 
-            <div className='p-10'>
-                <table className="min-w-full border border-gray-300 p-10">
-                    <thead>
-                        <tr>
-                            <th className='border-b p-2'>
-                                DAYS
-                            </th>
-                            {weekdays.map(day => (
-                                <th 
-                                    key={day}
-                                    className='border-b p-2'
-                                >
-                                    {day}
-                                </th>
-                            ))}
-                            <th className='border-b p-2'>
-                                Totals
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {[...Array(5)].map((_, rowIndex) => (
-                            <tr key={rowIndex}>
-                                <td className='border px-2 py-1'>Week {rowIndex + 1}</td>
-                                {[...Array(7)].map((_, colIndex) => (
-                                    <td key={colIndex} className="border px-2 py-1">
-                                        {dates[rowIndex * 7 + colIndex]?.getDate()}
-                                    </td>
-                                ))}
-                                <td className='border px-2 py-1'>Total for Week {rowIndex + 1}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            <div className='w-full flex flex-row justify-around'>
+                <div className='grid grid-cols-7 gap-x-24 gap-y-8'>
+                    {/* Display days of the week */}
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                        <div key={day} className='text-center text-sm text-gray-500'>
+                            {day}
+                        </div>
+                    ))}
+
+                    {dates.map((date, index) => {
+                        // Check if the date is in the same month as the current date
+                        const isCurrentMonth = isSameMonth(date, currentDate);
+
+                        // Chekc if the date is samae as the current date
+                        const isToday = isSameDay(date, new Date());
+
+                        // Apply some styles based on the conditions
+                        const dateClass = isCurrentMonth ? isToday ? "bg-blue-500 text-white rounded-full" : "text-gray-800" : "text-gray-400";
+
+                        return (
+                            <div key={index} className='flex flex-col items-center'>
+                                <div className='text-sm'>
+                                    {format(date, dateFormat)}
+                                </div>
+
+                                <input type="checkbox" id={`date-${index}`} />
+
+                                <div className='text-xs text-gray-500 mt-1'>
+                                    {differenceInCalendarDays(date, startOfYear(date)) + 1}
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+
+                <div className=' flex flex-col justify-center items-center align-middle'>
+                    <div className='text-lg font-bold'>
+                        Totals
+                    </div>
+                    {/* Calculate and display the total for each row */}
+                    {[0, 1, 2, 3, 4, 5].map(row => {
+                        const rowDates = dates.slice(row * 7, (row + 1) * 7);
+                        const rowTotal = rowDates.reduce((total, date) => {
+                            return total + differenceInCalendarDays(date, startOfYear(date)) + 1;
+                        }, 0);
+
+                        return (
+                            <div key={row} className='flex flex-col items-center pt-8'>
+                                <div className='text-sm'>
+                                    Total: {rowTotal}
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {/* Calculate and display the total for the entire grid */}
+                    <div className='flex flex-col items-center mt-4'>
+                        <div className='text-sm font-bold pt-6'>
+                            Total for all rows:
+                            {' '}
+                            {dates.reduce((total, date) => {
+                                return total + differenceInCalendarDays(date, startOfYear(date)) + 1;
+                            }, 0)}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     )
